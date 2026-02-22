@@ -34,12 +34,6 @@ ENV/
 Thumbs.db
 
 # Project Specific
-*.png
-*.jpg
-*.jpeg
 *.pdf
 .env.local
 
-# Data
-*.xlsx
-*.xls
