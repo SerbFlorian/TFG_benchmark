@@ -5,10 +5,11 @@ import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
 
 # --- CONFIGURACIÓN ---
+# Archivo fuente de datos y resolución de salida de las imágenes
 EXCEL_FILE = 'TFG_Benchmark_Questions.xlsx'
 OUTPUT_DPI = 300
 
-# --- FUNCIONES AUXILIARES ---
+# --- FUNCIONES AUXILIARES DE PROCESAMIENTO ---
 def parsear_fraccion(valor):
     """Convierte fracciones a números decimales."""
     if pd.isna(valor): return 0
@@ -23,6 +24,7 @@ def parsear_fraccion(valor):
     return 0
 
 def limpiar_columna_numerica(serie):
+    """Convierte una serie a numérica, tratando errores como NaN y llenándolos con 0."""
     return pd.to_numeric(serie, errors='coerce').fillna(0)
 
 def cargar_datos():
@@ -47,11 +49,13 @@ def cargar_datos():
     return df1, df2, df3
 
 def convertir_context_found_binario(valor):
+    """Auxiliar para normalizar respuestas de 'Context Found' a formato binario (0 para Sí, 1 para No)."""
     if pd.isna(valor): return 0
     val_str = str(valor).strip().lower()
     return 0 if val_str in ['sí', 'si', 'yes', 's'] else 1
 
-# --- GRÁFICA 1: LATENCIA PROMEDIO (NO DEPENDE DE LA NOTA) ---
+# --- GRÁFICA 1: LATENCIA PROMEDIO ---
+# Representa el tiempo medio de respuesta ignorando la calidad
 def grafica_latencia(df1, df2, df3):
     arquitecturas = ['Long Context', 'RAG Pinecone', 'RAG Native']
     valores = [
@@ -85,8 +89,8 @@ def grafica_latencia(df1, df2, df3):
     plt.close()
     print("  Gráfica 1: Latencia guardada")
 
-# --- GRÁFICA 2: CALIDAD ---
-# MODIFICACIÓN 2: Se añade is_judge para saber qué columna leer y qué título poner
+# --- GRÁFICA 2: CALIDAD (HEATMAP) ---
+# Genera un mapa de calor con las puntuaciones de cada pregunta para las 3 arquitecturas
 def grafica_calidad(df1, df2, df3, is_judge=False):
     col_suffix = "Question_score_Judge(0/10)" if is_judge else "Question_score_(0/10)"
     file_suffix = "Judge" if is_judge else "Humana"
@@ -127,14 +131,16 @@ def grafica_calidad(df1, df2, df3, is_judge=False):
     plt.close()
     print(f"  Gráfica 2: Calidad guardada como 'Grafica_Calidad_{file_suffix}.png'")
 
-# --- GRÁFICA 3: ROI ---
-# MODIFICACIÓN 3: Se añade is_judge
+# --- GRÁFICA 3: ROI (COSTO VS CALIDAD) ---
+# Gráfico de dispersión que muestra qué arquitectura ofrece mejor relación calidad-precio
 def grafica_roi(df1, df2, df3, is_judge=False):
     col_suffix = "Question_score_Judge(0/10)" if is_judge else "Question_score_(0/10)"
     file_suffix = "Judge" if is_judge else "Humana"
     title_extra = "(LLM-Judge)" if is_judge else "(Humano)"
 
     PRECIO_INPUT_1M, PRECIO_OUTPUT_1M, COST_EMBEDDING_OPENAI = 0.41706, 2.68168, 0.097
+    
+    # Cálculo manual del coste estimado basado en tokens medidos previamente
     costes = {
         'RAG Pinecone': (44575 / 1_000_000) * PRECIO_INPUT_1M + (5845 / 1_000_000) * PRECIO_OUTPUT_1M + COST_EMBEDDING_OPENAI,
         'RAG Native': (603739 / 1_000_000) * PRECIO_INPUT_1M + (12067 / 1_000_000) * PRECIO_OUTPUT_1M,
@@ -191,7 +197,7 @@ def grafica_roi(df1, df2, df3, is_judge=False):
     print(f"  Gráfica 3: ROI guardada como 'Grafica_ROI_{file_suffix}.png'")
 
 # --- GRÁFICA 4: CALIDAD + CONTEXTO COMBINADOS ---
-# MODIFICACIÓN 4: Se añade is_judge
+# Compara puntuaciones (barras) con el éxito en encontrar contexto (iconos verde/rojo)
 def grafica_calidad_contexto_combinada(df1, df2, df3, is_judge=False):
     col_suffix = "Question_score_Judge(0/10)" if is_judge else "Question_score_(0/10)"
     file_suffix = "Judge" if is_judge else "Humana"
@@ -254,8 +260,8 @@ def grafica_calidad_contexto_combinada(df1, df2, df3, is_judge=False):
     plt.close()
     print(f"  Gráfica 4: Calidad+Contexto guardada como 'Grafica_Calidad_Contexto_{file_suffix}.png'")
 
-# --- GRÁFICA 5: COMPARATIVA GLOBAL DE ARQUITECTURAS ---
-# MODIFICACIÓN 5: Se añade is_judge
+# --- GRÁFICA 5: COMPARATIVA GLOBAL (RADAR CHART AVANZADO) ---
+# Normaliza y compara 4 métricas clave: Calidad, Eficiencia, Velocidad y Fiabilidad
 def grafica_comparativa_arquitecturas(df1, df2, df3, is_judge=False):
     col_suffix = "Question_score_Judge(0/10)" if is_judge else "Question_score_(0/10)"
     file_suffix = "Judge" if is_judge else "Humana"
@@ -281,6 +287,8 @@ def grafica_comparativa_arquitecturas(df1, df2, df3, is_judge=False):
     
     contexto_encontrado = {'Arch1': calcular_tasa_contexto(df1, 'Arch1_Context_Found_(Sí/No)'), 'Arch2': calcular_tasa_contexto(df2, 'Arch2_Context_Found_(Sí/No)'), 'Arch3': calcular_tasa_contexto(df3, 'Arch3_Context_Found_(Sí/No)')}
     
+    
+    # NORMALIZACIÓN DE MÉTRICAS (Escala 0-10 para el Radar)
     calidad_norm = {k: v for k, v in calidad.items()}
     max_coste = max(costes.values())
     coste_norm = {k: 10 * (1 - v/max_coste) for k, v in costes.items()}
@@ -377,7 +385,8 @@ def grafica_comparativa_arquitecturas(df1, df2, df3, is_judge=False):
     plt.close()
     print(f"  Gráfica 5: Comparativa (Advanced Radar) guardada como 'Grafica_Comparativa_Arquitecturas_{file_suffix}.png'")
 
-# --- GRÁFICA 6: COMPARATIVA DE COSTES (NO DEPENDE DE LA NOTA) ---
+# --- GRÁFICA 6: COMPARATIVA DE COSTES LOGARÍTMICA ---
+# Análisis desglosado de costes por arquitectura (Inputs, Outputs y Embeddings)
 def grafica_costes():
     PRECIO_INPUT_1M, PRECIO_OUTPUT_1M, COST_EMBEDDING_OPENAI = 0.41706, 2.68168, 0.097
     COLOR_EMBEDDING_FACE, COLOR_EMBEDDING_EDGE, COLOR_TEXTO, COLOR_TOTAL = '#E0F2F1', '#00897B', '#333333', '#111111'
@@ -460,8 +469,8 @@ def grafica_costes():
     plt.close()
     print("  Gráfica 6: Costes guardada como 'Comparativa_Costes_Final.png'")
 
-# --- EJECUCIÓN PRINCIPAL ---
-# MODIFICACIÓN 6: El script ahora ejecuta dos veces las gráficas de calidad
+# --- BLOQUE DE EXECUCIÓN PRINCIPAL ---
+# Coordina la carga de datos y la generación secuencial de todas las visualizaciones
 if __name__ == "__main__":
     print(" Generando gráficas de análisis de rendimiento...\n")
     

@@ -8,20 +8,24 @@ from dotenv import load_dotenv
 # Cargar variables de entorno desde .env.local
 load_dotenv(".env.local")
 
-# 1. CONFIGURACIÓN
+# 1. CONFIGURACIÓN Y CLIENTE
+# Cargamos la clave de API y el nombre del archivo de entrada
 API_KEY = os.getenv("OPENAI_API_KEY")
 EXCEL_FILE = "TFG_Benchmark_Questions.xlsx"
 
-# Inicializamos el cliente de OpenAI
+# Inicializamos el cliente de OpenAI para interactuar con GPT-4o
 client = OpenAI(api_key=API_KEY)
 
 # Arquitecturas a evaluar
 arquitecturas = ['Arch1', 'Arch2', 'Arch3']
 
 def evaluar_respuesta(pregunta, ground_truth, respuesta_generada):
-    """Llama a GPT-4o para que actúe como juez estricto."""
+    """
+    Utiliza gpt-4o para evaluar la precisión técnica de una respuesta.
+    Compara la respuesta generada con la respuesta de referencia (Ground Truth).
+    """
     
-    # Si no hay respuesta generada, devolvemos un 0 directo
+    # Verificación de seguridad: si no hay texto generado, la puntuación es 0 por defecto
     if pd.isna(respuesta_generada) or str(respuesta_generada).strip() == "":
         return 0.0, "No hay respuesta generada."
 
@@ -37,6 +41,7 @@ Devuelve ÚNICAMENTE un formato JSON válido con dos claves:
 "razonamiento" (string, una frase breve justificando la nota) y 
 "puntuacion" (número entero o decimal del 1 al 10)."""
 
+    # Estructuramos los datos para enviarlos al modelo
     prompt_usuario = f"""
 **Pregunta:** {pregunta}
 **Respuesta Real (Ground Truth):** {ground_truth}
@@ -59,12 +64,14 @@ Devuelve ÚNICAMENTE un formato JSON válido con dos claves:
         resultado_str = response.choices[0].message.content
         resultado_json = json.loads(resultado_str)
         
+        # Extraemos razonamiento y puntuación del objeto JSON devuelto
         puntuacion = float(resultado_json.get("puntuacion", 0))
         razonamiento = str(resultado_json.get("razonamiento", ""))
         
         return puntuacion, razonamiento
         
     except Exception as e:
+        # Control de errores para evitar que el script se detenga si falla la API
         print(f"Error en la API: {e}")
         return 0.0, f"Error en evaluación: {str(e)}"
 
@@ -74,13 +81,14 @@ hojas_procesadas = {}
 for arch in arquitecturas:
     print(f"\n--- Iniciando evaluación para {arch} ---")
     
-    # Leer la hoja del Excel
+    # Cargamos los datos de la hoja específica de este modelo/arquitectura
     df = pd.read_excel(EXCEL_FILE, sheet_name=arch)
     
     # Asegurarnos de usar los nombres de columnas exactos que pediste
     col_score = f"{arch}_Question_score_Judge(0/10)"
     col_reason = f"{arch}_Judge_Reasoning"
     
+    # Verificamos si las columnas de salida existen; si no, las creamos
     if col_score not in df.columns:
         df[col_score] = 0.0
     if col_reason not in df.columns:
@@ -108,6 +116,7 @@ for arch in arquitecturas:
         # Pausa para no saturar la API
         time.sleep(1) 
         
+    # Guardamos los resultados parciales en el diccionario de hojas
     hojas_procesadas[arch] = df
     print(f" Hoja {arch} completada.")
 
