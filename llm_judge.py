@@ -31,15 +31,15 @@ def evaluar_respuesta(pregunta, ground_truth, respuesta_generada):
 
     prompt_sistema = """Eres un ingeniero mecánico experto y un evaluador estricto. Tu tarea es evaluar la precisión (Accuracy) de la respuesta generada por un sistema de IA comparándola con la respuesta real (Ground Truth) de un manual de taller de BMW.
 
-Evalúa del 1 al 10 basándote en esta rúbrica:
+Evalúa del 0 al 10 basándote en esta rúbrica:
 - 10: La respuesta es perfecta, contiene todos los datos técnicos (pares de apriete, medidas) exactos y no tiene información extraña.
 - 7-9: La respuesta es correcta y útil, pero omite algún detalle menor o es redundante.
 - 4-6: La respuesta tiene información parcialmente correcta, pero omite el dato clave o es ambigua.
-- 1-3: La respuesta es incorrecta, alucina datos técnicos peligrosos o dice que no encuentra la información.
+- 0-3: La respuesta es incorrecta, alucina datos técnicos peligrosos o dice que no encuentra la información.
 
 Devuelve ÚNICAMENTE un formato JSON válido con dos claves: 
 "razonamiento" (string, una frase breve justificando la nota) y 
-"puntuacion" (número entero o decimal del 1 al 10)."""
+"puntuacion" (número entero o decimal del 0 al 10)."""
 
     # Estructuramos los datos para enviarlos al modelo
     prompt_usuario = f"""
