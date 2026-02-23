@@ -148,9 +148,9 @@ def grafica_roi(df1, df2, df3, is_judge=False):
     }
     
     quality_promedio = {
-        'RAG Pinecone': df1[f'Arch1_{col_suffix}'].head(20).mean(),
-        'RAG Native': df2[f'Arch2_{col_suffix}'].head(20).mean(),
-        'Long Context': df3[f'Arch3_{col_suffix}'].head(20).mean()
+        'RAG Pinecone': np.ceil(df1[f'Arch1_{col_suffix}'].head(20).mean() * 10) / 10,
+        'RAG Native': np.ceil(df2[f'Arch2_{col_suffix}'].head(20).mean() * 10) / 10,
+        'Long Context': np.ceil(df3[f'Arch3_{col_suffix}'].head(20).mean() * 10) / 10
     }
     
     eficiencia = {k: quality_promedio[k] / costes[k] for k in costes.keys()}
@@ -275,9 +275,9 @@ def grafica_comparativa_arquitecturas(df1, df2, df3, is_judge=False):
     }
     
     calidad = {
-        'Arch1': df1[f'Arch1_{col_suffix}'].head(20).mean(),
-        'Arch2': df2[f'Arch2_{col_suffix}'].head(20).mean(),
-        'Arch3': df3[f'Arch3_{col_suffix}'].head(20).mean()
+        'Arch1': np.ceil(df1[f'Arch1_{col_suffix}'].head(20).mean() * 10) / 10,
+        'Arch2': np.ceil(df2[f'Arch2_{col_suffix}'].head(20).mean() * 10) / 10,
+        'Arch3': np.ceil(df3[f'Arch3_{col_suffix}'].head(20).mean() * 10) / 10
     }
     
     latencia = {'Arch1': df1['Arch1_Time_seconds'].head(20).mean(), 'Arch2': df2['Arch2_Time_seconds'].head(20).mean(), 'Arch3': df3['Arch3_Time_seconds'].head(20).mean()}
