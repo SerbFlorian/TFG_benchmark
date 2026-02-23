@@ -352,10 +352,10 @@ def grafica_comparativa_arquitecturas(df1, df2, df3, is_judge=False):
     label_dist = 11.3
     for j, (angle, label) in enumerate(zip(angulos[:-1], categorias)):
         ha, va, curr_dist = 'center', 'center', label_dist
-        if "Calidad" in label: final_text, ha, va, curr_dist = "       " + label.replace("\n", " "), 'left', 'bottom', label_dist + 0.2
-        elif "Eficiencia" in label: final_text, ha, va = "     " + label.replace("\n", " "), 'left', 'center'
-        elif "Fiabilidad" in label: final_text, ha, va = label.replace("\n", " ") + "     ", 'right', 'center'
-        elif "Velocidad" in label: final_text, ha, va, curr_dist = label.replace("\n", " "), 'center', 'top', label_dist - 0.1
+        if "Calidad" in label: final_text, ha, va, curr_dist = label.replace("\n", " "), 'center', 'bottom', label_dist + 0.5
+        elif "Eficiencia" in label: final_text, ha, va, curr_dist = label, 'left', 'center', label_dist + 0.1
+        elif "Fiabilidad" in label: final_text, ha, va, curr_dist = label, 'right', 'center', label_dist + 1
+        elif "Velocidad" in label: final_text, ha, va, curr_dist = label.replace("\n", " "), 'center', 'bottom', label_dist + 0.3
         ax_main.text(angle, curr_dist, final_text, ha=ha, va=va, fontsize=12, fontweight='bold', color='black')
 
     ax_main.set_theta_offset(np.pi / 2)
