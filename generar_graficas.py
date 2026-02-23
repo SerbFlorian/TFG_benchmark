@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.ticker import MultipleLocator
 
 # --- CONFIGURACIÓN ---
 # Archivo fuente de datos y resolución de salida de las imágenes
@@ -112,7 +113,7 @@ def grafica_calidad(df1, df2, df3, is_judge=False):
     
     ax.set_xticklabels(['RAG Pinecone', 'RAG Native', 'Long Context'], fontsize=12, fontweight='bold')
     ax.set_yticklabels([f'P{i}' for i in range(1, num_preguntas + 1)], fontsize=10, rotation=0)
-    ax.set_xlabel('Arquitectura', fontsize=13, fontweight='bold', labelpad=10)
+
     ax.set_ylabel('Pregunta', fontsize=13, fontweight='bold', labelpad=10)
     ax.set_title(f'Calidad de Respuesta por Pregunta y Arquitectura\n{title_extra}', fontsize=15, fontweight='bold', pad=20)
     
@@ -172,8 +173,9 @@ def grafica_roi(df1, df2, df3, is_judge=False):
     x_sorted, y_sorted = [x_values[i] for i in sorted_indices], [y_values[i] for i in sorted_indices]
     ax.plot(x_sorted, y_sorted, 'k--', alpha=0.3, linewidth=2, zorder=1)
     
-    ax.set_xlabel('Coste Total ($USD)', fontsize=13, fontweight='bold')
+    ax.set_xlabel('Coste Total (€ EUR)', fontsize=13, fontweight='bold')
     ax.set_ylabel('Calidad Promedio (Score 0-10)', fontsize=13, fontweight='bold')
+    ax.yaxis.set_major_locator(MultipleLocator(0.2))
     ax.set_title(f'Trade-off Coste vs Calidad {title_extra}\n(Arriba-Izquierda = Mejor: Alta Calidad, Bajo Coste)', fontsize=15, fontweight='bold', pad=20)
     
     from matplotlib.patches import Patch
