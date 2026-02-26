@@ -25,6 +25,17 @@ Una vez obtenidos los resultados (ya sean humanos o del juez automático), este 
   - **Costes**: Desglose detallado (Tokens Input/Output y Embeddings) en escala logarítmica.
 - **Versatilidad**: El script genera automáticamente dos versiones de los gráficos: una basada en la evaluación humana y otra en la del Juez LLM.
 
+### 3. Análisis de Sensibilidad al Contexto (`generar_graficas_longContext.py`)
+Este módulo especializado evalúa cómo escala la arquitectura de **Long Context** conforme aumenta el volumen de información (número de páginas del PDF).
+
+- **Metodología**: Compara el rendimiento del Long Context en 4 hitos de volumen (10, 50, 100 y 200 páginas) frente a los resultados estáticos de las arquitecturas RAG.
+- **Métricas de Sensibilidad**:
+  - **Calidad vs. Volumen**: Evolución del score medio y comparación con los baselines de RAG Native y Pinecone.
+  - **Trade-off Económico**: Identifica el *Break-even Point* (punto de equilibrio) donde el Long Context deja de ser rentable frente a RAG.
+  - **Latencia Variable**: Mide el incremento del tiempo de respuesta según el tamaño del PDF.
+  - **ROI Dinámico**: Análisis de eficiencia (Calidad/Coste) ajustado por la cantidad de información procesada.
+  - **Coste por Lote**: Visualización del coste exacto en Euros para un lote de 10 preguntas según el volumen analizado.
+
 ## Requisitos y Configuración
 
 1. **Python 3.x** con las librerías: `pandas`, `openai`, `matplotlib`, `seaborn`, `numpy`, `python-dotenv` y `openpyxl`.
