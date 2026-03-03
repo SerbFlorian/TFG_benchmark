@@ -11,13 +11,13 @@ load_dotenv(".env.local")
 # 1. CONFIGURACIÓN Y CLIENTE
 # Cargamos la clave de API y el nombre del archivo de entrada
 API_KEY = os.getenv("OPENAI_API_KEY")
-EXCEL_FILE = "TFG_Benchmark_Questions.xlsx"
+EXCEL_FILE = "DataSet_85pag.xlsx"
 
 # Inicializamos el cliente de OpenAI para interactuar con GPT-4o
 client = OpenAI(api_key=API_KEY)
 
 # Arquitecturas a evaluar
-arquitecturas = ['Arch1', 'Arch2', 'Arch3']
+arquitecturas = ['RAG_Pinecone', 'RAG_Native', 'LongContext']
 
 def evaluar_respuesta(pregunta, ground_truth, respuesta_generada):
     """
@@ -29,7 +29,7 @@ def evaluar_respuesta(pregunta, ground_truth, respuesta_generada):
     if pd.isna(respuesta_generada) or str(respuesta_generada).strip() == "":
         return 0.0, "No hay respuesta generada."
 
-    prompt_sistema = """Eres un ingeniero mecánico experto y un evaluador estricto. Tu tarea es evaluar la precisión (Accuracy) de la respuesta generada por un sistema de IA comparándola con la respuesta real (Ground Truth) de un manual de taller de BMW.
+    prompt_sistema = """Eres un ingeniero mecánico experto y un evaluador estricto. Tu tarea es evaluar la precisión (Accuracy) de la respuesta generada por un sistema de IA comparándola con la respuesta real (Ground Truth) de un manual de taller oficial.
 
 Evalúa del 0 al 10 basándote en esta rúbrica:
 - 10: La respuesta es perfecta, contiene todos los datos técnicos (pares de apriete, medidas) exactos y no tiene información extraña.
@@ -37,9 +37,12 @@ Evalúa del 0 al 10 basándote en esta rúbrica:
 - 4-6: La respuesta tiene información parcialmente correcta, pero omite el dato clave o es ambigua.
 - 0-3: La respuesta es incorrecta, alucina datos técnicos peligrosos o dice que no encuentra la información.
 
-Devuelve ÚNICAMENTE un formato JSON válido con dos claves: 
-"razonamiento" (string, una frase breve justificando la nota) y 
-"puntuacion" (número entero o decimal del 0 al 10)."""
+Además, debes determinar si el sistema de IA efectivamente encontró la información requerida en su contexto o si respondió usando conocimiento general o aceptando que no tiene información. Responde con "Sí" si el sistema indica haber encontrado y usado el contexto para responder bien, y "No" si indica no tener contexto, pide disculpas, o se inventa la respuesta sin base técnica.
+
+Devuelve ÚNICAMENTE un formato JSON válido con tres claves: 
+"razonamiento" (string, una frase breve justificando la nota), 
+"puntuacion" (número entero o decimal del 0 al 10) y 
+"contexto_encontrado" (string, estrictamente "Sí" o "No")."""
 
     # Estructuramos los datos para enviarlos al modelo
     prompt_usuario = f"""
@@ -67,13 +70,17 @@ Devuelve ÚNICAMENTE un formato JSON válido con dos claves:
         # Extraemos razonamiento y puntuación del objeto JSON devuelto
         puntuacion = float(resultado_json.get("puntuacion", 0))
         razonamiento = str(resultado_json.get("razonamiento", ""))
-        
-        return puntuacion, razonamiento
+        contexto_encontrado = str(resultado_json.get("contexto_encontrado", "No")).strip()
+        if contexto_encontrado not in ["Sí", "No", "Si"]:
+            contexto_encontrado = "No"
+            
+        return puntuacion, razonamiento, contexto_encontrado
         
     except Exception as e:
         # Control de errores para evitar que el script se detenga si falla la API
         print(f"Error en la API: {e}")
-        return 0.0, f"Error en evaluación: {str(e)}"
+        return 0.0, f"Error en evaluación: {str(e)}", "No"
+
 
 # 2. BUCLE PRINCIPAL
 hojas_procesadas = {}
@@ -85,17 +92,28 @@ for arch in arquitecturas:
     df = pd.read_excel(EXCEL_FILE, sheet_name=arch)
     
     # Asegurarnos de usar los nombres de columnas exactos que pediste
-    col_score = f"{arch}_Question_score_Judge(0/10)"
-    col_reason = f"{arch}_Judge_Reasoning"
+    col_score = "Question_score_Judge(0/10)"
+    col_reason = "Judge_Reasoning"
+    col_context = "Context_Found_(Sí/No)"
     
-    # Verificamos si las columnas de salida existen; si no, las creamos
+    # Forzar dtypes para evitar advertencias de pandas (FutureWarning)
     if col_score not in df.columns:
         df[col_score] = 0.0
+    else:
+        df[col_score] = df[col_score].astype(float)
+        
     if col_reason not in df.columns:
-        df[col_reason] = df[col_reason].astype(object)
+        df[col_reason] = ""
+    
+    df[col_reason] = df[col_reason].astype(object)
+    
+    if col_context not in df.columns:
+        df[col_context] = ""
+        
+    df[col_context] = df[col_context].astype(object)
         
     # Columna específica donde está la respuesta de la IA
-    col_response = f"{arch}_Response"
+    col_response = "Response"
     
     # Iterar solo por las 20 primeras preguntas
     for index, row in df.head(20).iterrows():
@@ -107,11 +125,12 @@ for arch in arquitecturas:
         print(f"[{arch}] Evaluando P{id_pregunta}...")
         
         # Llamar al juez
-        puntuacion, razonamiento = evaluar_respuesta(pregunta, ground_truth, respuesta)
+        puntuacion, razonamiento, contexto_encontrado = evaluar_respuesta(pregunta, ground_truth, respuesta)
         
         # Guardar en el DataFrame
         df.at[index, col_score] = puntuacion
         df.at[index, col_reason] = razonamiento
+        df.at[index, col_context] = contexto_encontrado
         
         # Pausa para no saturar la API
         time.sleep(1) 
