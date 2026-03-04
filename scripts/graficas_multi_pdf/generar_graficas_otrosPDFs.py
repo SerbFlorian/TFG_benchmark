@@ -3,11 +3,28 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import os
+from pathlib import Path
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.ticker import MultipleLocator
 
 # --- CONFIGURACIÓN ---
+# Directorio base relativo al propio script (independiente del CWD)
+_BASE = Path(__file__).resolve().parent.parent.parent
+DATA_DIR    = _BASE / 'data'
+GRAFICAS_DIR = _BASE / 'graficas'
 OUTPUT_DPI = 300
+
+# Mapa de sufijo → subdirectorio de salida
+_SUFFIX_DIR = {
+    '_85pag':  '85_paginas',
+    '_142pag': '142_paginas',
+}
+
+def get_out_dir(suffix):
+    """Devuelve (y crea si no existe) el subdirectorio de gráficas para el suffix dado."""
+    folder = GRAFICAS_DIR / _SUFFIX_DIR.get(suffix, suffix.lstrip('_'))
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
 
 # --- FUNCIONES AUXILIARES DE PROCESAMIENTO ---
 def parsear_fraccion(valor):
@@ -91,7 +108,7 @@ def grafica_latencia(df1, df2, df3, suffix):
     ax.axvline(x=5, color='#e74c3c', linestyle='--', linewidth=1.8, alpha=0.85)
     ax.text(5.1, 1.2, 'Umbral (5s)', color='#e74c3c', fontsize=9, va='center', fontweight='bold')
 
-    plt.savefig(f'Grafica_Latencia{suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(get_out_dir(suffix) / f'Grafica_Latencia{suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print(f"  Gráfica 1: Latencia guardada como 'Grafica_Latencia{suffix}.png'")
 
@@ -136,7 +153,7 @@ def grafica_calidad(df1, df2, df3, suffix, is_judge=False):
             bbox=dict(boxstyle='round,pad=1.2', facecolor='#f8f9fa', alpha=0.95, edgecolor='#dee2e6', linewidth=1.5),
             ha='center', fontweight='bold', family='monospace') 
     
-    plt.savefig(f'Grafica_Calidad_{file_suffix}{suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(get_out_dir(suffix) / f'Grafica_Calidad_{file_suffix}{suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print(f"  Gráfica 2: Calidad guardada como 'Grafica_Calidad_{file_suffix}{suffix}.png'")
 
@@ -208,7 +225,7 @@ def grafica_roi(df1, df2, df3, suffix, is_judge=False):
     ax.set_xlim(min(x_values)*0.5 - 0.05, max(x_values) * 1.8)
     ax.set_ylim(min(y_values) - 0.3, max(y_values) + 1.0)
     
-    plt.savefig(f'Grafica_ROI_{file_suffix}{suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(get_out_dir(suffix) / f'Grafica_ROI_{file_suffix}{suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print(f"  Gráfica 3: ROI guardada como 'Grafica_ROI_{file_suffix}{suffix}.png'")
 
@@ -279,7 +296,7 @@ def grafica_calidad_contexto_combinada(df1, df2, df3, suffix, is_judge=False):
     ]
     ax.legend(handles=legend_elements, loc='upper right', fontsize=11, frameon=True, shadow=True, title='Contexto', bbox_to_anchor=(1, 1.2))
     
-    plt.savefig(f'Grafica_Calidad_Contexto_{file_suffix}{suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(get_out_dir(suffix) / f'Grafica_Calidad_Contexto_{file_suffix}{suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print(f"  Gráfica 4: Calidad+Contexto guardada como 'Grafica_Calidad_Contexto_{file_suffix}{suffix}.png'")
 
@@ -414,7 +431,7 @@ def grafica_comparativa_arquitecturas(df1, df2, df3, suffix, is_judge=False):
                     bbox=dict(boxstyle='round,pad=0.5', facecolor=color, edgecolor='none'))
 
     plt.subplots_adjust(left=0.1, right=0.9, top=0.92, bottom=0.14, hspace=0.4)
-    plt.savefig(f'Grafica_Comparativa_Arquitecturas_{file_suffix}{suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(get_out_dir(suffix) / f'Grafica_Comparativa_Arquitecturas_{file_suffix}{suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print(f"  Gráfica 5: Comparativa (Advanced Radar) guardada como 'Grafica_Comparativa_Arquitecturas_{file_suffix}{suffix}.png'")
 
@@ -443,15 +460,15 @@ def grafica_costes(df1, df2, df3, suffix):
     ax.set_title('Comparativa de Costes Totales', fontsize=13, fontweight='bold')
     ax.grid(axis='y', alpha=0.3)
 
-    plt.savefig(f'Comparativa_Costes{suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(get_out_dir(suffix) / f'Comparativa_Costes{suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print(f"  Gráfica 6: Costes guardada como 'Comparativa_Costes{suffix}.png'")
 
 # --- BLOQUE DE EXECUCIÓN PRINCIPAL ---
 if __name__ == "__main__":
     excels_a_procesar = [
-        {'archivo': 'DataSet_85pag.xlsx', 'sufijo': '_85pag'},
-        {'archivo': 'DataSet_142pag.xlsx', 'sufijo': '_142pag'}
+        {'archivo': DATA_DIR / 'DataSet_85pag.xlsx', 'sufijo': '_85pag'},
+        {'archivo': DATA_DIR / 'DataSet_142pag.xlsx', 'sufijo': '_142pag'}
     ]
     
     for item in excels_a_procesar:

@@ -2,10 +2,17 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+from pathlib import Path
 from matplotlib.ticker import MultipleLocator
 
 # --- CONFIGURACIÓN ---
-EXCEL_FILE = 'Benchmark_LongContext_Sensibilidad.xlsx'
+# Directorio base relativo al propio script (independiente del CWD)
+_BASE = Path(__file__).resolve().parent.parent.parent
+DATA_DIR     = _BASE / 'data'
+GRAFICAS_DIR = _BASE / 'graficas'
+OUT_DIR      = GRAFICAS_DIR / 'sensibilidad_contexto'
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+EXCEL_FILE = DATA_DIR / 'Benchmark_LongContext_Sensibilidad.xlsx'
 OUTPUT_DPI = 300
 
 # Precios oficiales de Gemini (por 1 millón de tokens)
@@ -142,7 +149,7 @@ def plot_calidad_promedio(datos):
               fontsize=10, frameon=True, shadow=True)
 
     plt.tight_layout()
-    plt.savefig('Tradeoff_0_Calidad.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(OUT_DIR / 'Tradeoff_0_Calidad.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print("   Gráfica 0 (Calidad) generada.")
 
@@ -211,7 +218,7 @@ def plot_tradeoff_economico(datos):
               fontsize=9, frameon=True, shadow=True, ncol=1)
     
     plt.tight_layout()
-    plt.savefig('Tradeoff_1_Economico.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(OUT_DIR / 'Tradeoff_1_Economico.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print("   Gráfica 1 (Costes) generada.")
 
@@ -259,7 +266,7 @@ def plot_tradeoff_latencia(datos):
 
     plt.tight_layout()
     # bbox_inches='tight' evita que la caja externa sea recortada al guardar
-    plt.savefig('Tradeoff_2_Latencia.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(OUT_DIR / 'Tradeoff_2_Latencia.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print("   Gráfica 2 (Latencia) generada con leyenda exterior.")
 
@@ -298,7 +305,7 @@ def plot_tradeoff_eficiencia(datos):
               fontsize=10, frameon=True, shadow=True, ncol=1)
     
     plt.tight_layout()
-    plt.savefig('Tradeoff_3_Eficiencia.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(OUT_DIR / 'Tradeoff_3_Eficiencia.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print("  Gráfica 3 (Eficiencia/ROI) generada.")
 
@@ -330,7 +337,7 @@ def plot_coste_exacto(datos):
     ax.grid(axis='y', linestyle='--', alpha=0.5)
 
     plt.tight_layout()
-    plt.savefig('Tradeoff_4_Coste_Exacto.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(OUT_DIR / 'Tradeoff_4_Coste_Exacto.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print("   Gráfica 4 (Coste Exacto) generada.")
 

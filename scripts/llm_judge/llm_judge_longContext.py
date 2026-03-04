@@ -2,15 +2,17 @@ import pandas as pd
 import json
 import time
 import os
+from pathlib import Path
 from openai import OpenAI
 from dotenv import load_dotenv
 
 # Cargar variables de entorno desde .env.local
-load_dotenv(".env.local")
+_BASE = Path(__file__).resolve().parent.parent.parent
+load_dotenv(_BASE / ".env.local")
 
 # 1. CONFIGURACIÓN Y CLIENTE
 API_KEY = os.getenv("OPENAI_API_KEY")
-EXCEL_FILE = "Benchmark_LongContext_Sensibilidad.xlsx"
+EXCEL_FILE = _BASE / "data" / "Benchmark_LongContext_Sensibilidad.xlsx"
 
 # Inicializamos el cliente de OpenAI para interactuar con GPT-4o
 client = OpenAI(api_key=API_KEY)

@@ -2,12 +2,18 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+from pathlib import Path
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.ticker import MultipleLocator
 
 # --- CONFIGURACIÓN ---
-# Archivo fuente de datos y resolución de salida de las imágenes
-EXCEL_FILE = 'TFG_Benchmark_Questions.xlsx'
+# Directorio base relativo al propio script (independiente del CWD)
+_BASE = Path(__file__).resolve().parent.parent.parent
+DATA_DIR     = _BASE / 'data'
+GRAFICAS_DIR = _BASE / 'graficas'
+OUT_DIR      = GRAFICAS_DIR / 'benchmark_principal'
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+EXCEL_FILE = DATA_DIR / 'TFG_Benchmark_Questions.xlsx'
 OUTPUT_DPI = 300
 
 # --- FUNCIONES AUXILIARES DE PROCESAMIENTO ---
@@ -30,17 +36,17 @@ def limpiar_columna_numerica(serie):
 
 def cargar_datos():
     """Carga las tres hojas del Excel y retorna DataFrames"""
-    df1 = pd.read_excel(EXCEL_FILE, sheet_name='Arch1')
-    df2 = pd.read_excel(EXCEL_FILE, sheet_name='Arch2')
-    df3 = pd.read_excel(EXCEL_FILE, sheet_name='Arch3')
+    df1 = pd.read_excel(EXCEL_FILE, sheet_name='RAG_Pinecone')
+    df2 = pd.read_excel(EXCEL_FILE, sheet_name='RAG_Native')
+    df3 = pd.read_excel(EXCEL_FILE, sheet_name='LongContext')
     
-    for df, prefix in [(df1, 'Arch1'), (df2, 'Arch2'), (df3, 'Arch3')]:
-        if f'{prefix}_Time_seconds' in df.columns:
-            df[f'{prefix}_Time_seconds'] = limpiar_columna_numerica(df[f'{prefix}_Time_seconds'])
+    for df, prefix in [(df1, 'RAG_Pinecone'), (df2, 'RAG_Native'), (df3, 'LongContext')]:
+        if 'Time_seconds' in df.columns:
+            df['Time_seconds'] = limpiar_columna_numerica(df['Time_seconds'])
         
         # MODIFICACIÓN 1: Limpiar tanto la columna humana como la del Juez
-        col_score_humano = f'{prefix}_Question_score_(0/10)'
-        col_score_judge = f'{prefix}_Question_score_Judge(0/10)'
+        col_score_humano = 'Question_score_(0/10)'
+        col_score_judge = 'Question_score_Judge(0/10)'
         
         if col_score_humano in df.columns:
             df[col_score_humano] = df[col_score_humano].apply(parsear_fraccion)
@@ -60,9 +66,9 @@ def convertir_context_found_binario(valor):
 def grafica_latencia(df1, df2, df3):
     arquitecturas = ['Long Context', 'RAG Pinecone', 'RAG Native']
     valores = [
-        df3['Arch3_Time_seconds'].mean(),
-        df1['Arch1_Time_seconds'].mean(),
-        df2['Arch2_Time_seconds'].mean(),
+        df3['Time_seconds'].mean(),
+        df1['Time_seconds'].mean(),
+        df2['Time_seconds'].mean(),
     ]
     mako_cmap = sns.color_palette('mako', as_cmap=True)
     colores = [mako_cmap(0.85), mako_cmap(0.15), mako_cmap(0.5)]
@@ -86,7 +92,7 @@ def grafica_latencia(df1, df2, df3):
     ax.text(5.1, 1.2, 'Umbral (5s)', color='#e74c3c', fontsize=9, va='center', fontweight='bold')
 
     plt.tight_layout()
-    plt.savefig('Grafica_Latencia.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(OUT_DIR / 'Grafica_Latencia.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print("  Gráfica 1: Latencia guardada")
 
@@ -101,9 +107,9 @@ def grafica_calidad(df1, df2, df3, is_judge=False):
     matriz = np.zeros((num_preguntas, 3))
     
     for i in range(num_preguntas):
-        if i < len(df1): matriz[i, 0] = df1.iloc[i][f'Arch1_{col_suffix}']
-        if i < len(df2): matriz[i, 1] = df2.iloc[i][f'Arch2_{col_suffix}']
-        if i < len(df3): matriz[i, 2] = df3.iloc[i][f'Arch3_{col_suffix}']
+        if i < len(df1): matriz[i, 0] = df1.iloc[i][col_suffix]
+        if i < len(df2): matriz[i, 1] = df2.iloc[i][col_suffix]
+        if i < len(df3): matriz[i, 2] = df3.iloc[i][col_suffix]
     
     fig, ax = plt.subplots(figsize=(10, 14))
     im = sns.heatmap(matriz, annot=True, fmt='.0f', cmap='mako', vmin=0, vmax=10, 
@@ -128,7 +134,7 @@ def grafica_calidad(df1, df2, df3, is_judge=False):
             ha='center', fontweight='bold', family='monospace') 
     
     plt.tight_layout()
-    plt.savefig(f'Grafica_Calidad_{file_suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(OUT_DIR / f'Grafica_Calidad_{file_suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print(f"  Gráfica 2: Calidad guardada como 'Grafica_Calidad_{file_suffix}.png'")
 
@@ -149,9 +155,9 @@ def grafica_roi(df1, df2, df3, is_judge=False):
     }
     
     quality_promedio = {
-        'RAG Pinecone': np.ceil(df1[f'Arch1_{col_suffix}'].head(20).mean() * 10) / 10,
-        'RAG Native': np.ceil(df2[f'Arch2_{col_suffix}'].head(20).mean() * 10) / 10,
-        'Long Context': np.ceil(df3[f'Arch3_{col_suffix}'].head(20).mean() * 10) / 10
+        'RAG Pinecone': np.ceil(df1[col_suffix].head(20).mean() * 10) / 10,
+        'RAG Native': np.ceil(df2[col_suffix].head(20).mean() * 10) / 10,
+        'Long Context': np.ceil(df3[col_suffix].head(20).mean() * 10) / 10
     }
     
     eficiencia = {k: quality_promedio[k] / costes[k] for k in costes.keys()}
@@ -194,7 +200,7 @@ def grafica_roi(df1, df2, df3, is_judge=False):
     ax.set_ylim(min(y_values) - 0.3, max(y_values) + 0.3)
     
     plt.tight_layout()
-    plt.savefig(f'Grafica_ROI_{file_suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(OUT_DIR / f'Grafica_ROI_{file_suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print(f"  Gráfica 3: ROI guardada como 'Grafica_ROI_{file_suffix}.png'")
 
@@ -206,13 +212,13 @@ def grafica_calidad_contexto_combinada(df1, df2, df3, is_judge=False):
     title_extra = "(LLM-Judge)" if is_judge else "(Evaluación Humana)"
 
     num_preguntas = 20
-    arch1_scores = df1[f'Arch1_{col_suffix}'].head(num_preguntas).values
-    arch2_scores = df2[f'Arch2_{col_suffix}'].head(num_preguntas).values
-    arch3_scores = df3[f'Arch3_{col_suffix}'].head(num_preguntas).values
+    arch1_scores = df1[col_suffix].head(num_preguntas).values
+    arch2_scores = df2[col_suffix].head(num_preguntas).values
+    arch3_scores = df3[col_suffix].head(num_preguntas).values
     
-    arch1_context = df1['Arch1_Context_Found_(Sí/No)'].head(num_preguntas).values
-    arch2_context = df2['Arch2_Context_Found_(Sí/No)'].head(num_preguntas).values
-    arch3_context = df3['Arch3_Context_Found_(Sí/No)'].head(num_preguntas).values
+    arch1_context = df1['Context_Found_(Sí/No)'].head(num_preguntas).values
+    arch2_context = df2['Context_Found_(Sí/No)'].head(num_preguntas).values
+    arch3_context = df3['Context_Found_(Sí/No)'].head(num_preguntas).values
     
     preguntas = [f'P{i}' for i in range(1, num_preguntas + 1)]
     fig, ax = plt.subplots(figsize=(14, 8))
@@ -258,7 +264,7 @@ def grafica_calidad_contexto_combinada(df1, df2, df3, is_judge=False):
     ax.legend(handles=legend_elements, loc='upper right', fontsize=11, frameon=True, shadow=True, title='Contexto', bbox_to_anchor=(1, 1.2))
     
     plt.tight_layout()
-    plt.savefig(f'Grafica_Calidad_Contexto_{file_suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(OUT_DIR / f'Grafica_Calidad_Contexto_{file_suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print(f"  Gráfica 4: Calidad+Contexto guardada como 'Grafica_Calidad_Contexto_{file_suffix}.png'")
 
@@ -271,23 +277,23 @@ def grafica_comparativa_arquitecturas(df1, df2, df3, is_judge=False):
 
     PRECIO_INPUT_1M, PRECIO_OUTPUT_1M, COST_EMBEDDING_OPENAI = 0.41706, 2.68168, 0.097
     costes = {
-        'Arch1': (44575 / 1_000_000) * PRECIO_INPUT_1M + (5845 / 1_000_000) * PRECIO_OUTPUT_1M + COST_EMBEDDING_OPENAI,
-        'Arch2': (603739 / 1_000_000) * PRECIO_INPUT_1M + (12067 / 1_000_000) * PRECIO_OUTPUT_1M,
-        'Arch3': (2828444 / 1_000_000) * PRECIO_INPUT_1M + (4462 / 1_000_000) * PRECIO_OUTPUT_1M
+        'RAG_Pinecone': (44575 / 1_000_000) * PRECIO_INPUT_1M + (5845 / 1_000_000) * PRECIO_OUTPUT_1M + COST_EMBEDDING_OPENAI,
+        'RAG_Native': (603739 / 1_000_000) * PRECIO_INPUT_1M + (12067 / 1_000_000) * PRECIO_OUTPUT_1M,
+        'LongContext': (2828444 / 1_000_000) * PRECIO_INPUT_1M + (4462 / 1_000_000) * PRECIO_OUTPUT_1M
     }
     
     calidad = {
-        'Arch1': np.ceil(df1[f'Arch1_{col_suffix}'].head(20).mean() * 10) / 10,
-        'Arch2': np.ceil(df2[f'Arch2_{col_suffix}'].head(20).mean() * 10) / 10,
-        'Arch3': np.ceil(df3[f'Arch3_{col_suffix}'].head(20).mean() * 10) / 10
+        'RAG_Pinecone': np.ceil(df1[col_suffix].head(20).mean() * 10) / 10,
+        'RAG_Native': np.ceil(df2[col_suffix].head(20).mean() * 10) / 10,
+        'LongContext': np.ceil(df3[col_suffix].head(20).mean() * 10) / 10
     }
     
-    latencia = {'Arch1': df1['Arch1_Time_seconds'].head(20).mean(), 'Arch2': df2['Arch2_Time_seconds'].head(20).mean(), 'Arch3': df3['Arch3_Time_seconds'].head(20).mean()}
+    latencia = {'RAG_Pinecone': df1['Time_seconds'].head(20).mean(), 'RAG_Native': df2['Time_seconds'].head(20).mean(), 'LongContext': df3['Time_seconds'].head(20).mean()}
     
     def calcular_tasa_contexto(df, col_name):
         return (df[col_name].head(20).apply(lambda x: 1 if str(x).strip().lower() in ['sí', 'si', 'yes', 's'] else 0).sum() / 20) * 100 
     
-    contexto_encontrado = {'Arch1': calcular_tasa_contexto(df1, 'Arch1_Context_Found_(Sí/No)'), 'Arch2': calcular_tasa_contexto(df2, 'Arch2_Context_Found_(Sí/No)'), 'Arch3': calcular_tasa_contexto(df3, 'Arch3_Context_Found_(Sí/No)')}
+    contexto_encontrado = {'RAG_Pinecone': calcular_tasa_contexto(df1, 'Context_Found_(Sí/No)'), 'RAG_Native': calcular_tasa_contexto(df2, 'Context_Found_(Sí/No)'), 'LongContext': calcular_tasa_contexto(df3, 'Context_Found_(Sí/No)')}
     
     
     # NORMALIZACIÓN DE MÉTRICAS (Escala 0-10 para el Radar)
@@ -299,9 +305,9 @@ def grafica_comparativa_arquitecturas(df1, df2, df3, is_judge=False):
     fiabilidad_norm = {k: v / 10 for k, v in contexto_encontrado.items()}
     
     categorias = ['Calidad\n(Score)', 'Eficiencia\n(Bajo Coste)', 'Velocidad\n(Baja Latencia)', 'Fiabilidad\n(Contexto OK)']
-    valores_arch1 = [calidad_norm['Arch1'], coste_norm['Arch1'], velocidad_norm['Arch1'], fiabilidad_norm['Arch1']]
-    valores_arch2 = [calidad_norm['Arch2'], coste_norm['Arch2'], velocidad_norm['Arch2'], fiabilidad_norm['Arch2']]
-    valores_arch3 = [calidad_norm['Arch3'], coste_norm['Arch3'], velocidad_norm['Arch3'], fiabilidad_norm['Arch3']]
+    valores_arch1 = [calidad_norm['RAG_Pinecone'], coste_norm['RAG_Pinecone'], velocidad_norm['RAG_Pinecone'], fiabilidad_norm['RAG_Pinecone']]
+    valores_arch2 = [calidad_norm['RAG_Native'], coste_norm['RAG_Native'], velocidad_norm['RAG_Native'], fiabilidad_norm['RAG_Native']]
+    valores_arch3 = [calidad_norm['LongContext'], coste_norm['LongContext'], velocidad_norm['LongContext'], fiabilidad_norm['LongContext']]
     
     valores_arch1 += valores_arch1[:1]
     valores_arch2 += valores_arch2[:1]
@@ -383,7 +389,7 @@ def grafica_comparativa_arquitecturas(df1, df2, df3, is_judge=False):
         ax_sub.text(0.5, -0.3, f"  {nombre}  ", transform=ax_sub.transAxes, ha='center', va='center', fontsize=16, fontweight='bold', color='white', bbox=dict(boxstyle='round,pad=0.5', facecolor=color, edgecolor='none'))
 
     plt.subplots_adjust(left=0.1, right=0.9, top=0.92, bottom=0.14, hspace=0.4)
-    plt.savefig(f'Grafica_Comparativa_Arquitecturas_{file_suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(OUT_DIR / f'Grafica_Comparativa_Arquitecturas_{file_suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print(f"  Gráfica 5: Comparativa (Advanced Radar) guardada como 'Grafica_Comparativa_Arquitecturas_{file_suffix}.png'")
 
@@ -467,7 +473,7 @@ def grafica_costes():
     ]
     ax.legend(handles=legend_elements, loc='upper left', fontsize=10, frameon=True, facecolor='white', framealpha=0.95, ncol=1, bbox_to_anchor=(0.01, 0.99)) 
     plt.tight_layout()
-    plt.savefig('Comparativa_Costes_Final.png', dpi=OUTPUT_DPI, bbox_inches='tight')
+    plt.savefig(OUT_DIR / 'Comparativa_Costes_Final.png', dpi=OUTPUT_DPI, bbox_inches='tight')
     plt.close()
     print("  Gráfica 6: Costes guardada como 'Comparativa_Costes_Final.png'")
 
@@ -504,3 +510,4 @@ if __name__ == "__main__":
     print("\nAhora tendrás dos versiones de las gráficas de puntuación:")
     print("  - Terminadas en '_Humana.png' (Tus notas)")
     print("  - Terminadas en '_Judge.png'  (Notas de GPT-4o)")
+
