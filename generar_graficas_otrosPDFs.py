@@ -140,6 +140,13 @@ def grafica_calidad(df1, df2, df3, suffix, is_judge=False):
     plt.close()
     print(f"  Gráfica 2: Calidad guardada como 'Grafica_Calidad_{file_suffix}{suffix}.png'")
 
+# Costes fijos verificados con la factura de Google Cloud
+# (ingeniería inversa: input 0.42€ + output 0.05€ total)
+COSTES_FIJOS = {
+    '_85pag':  {'RAG Pinecone': 0.03, 'RAG Native': 0.14, 'Long Context': 0.10},
+    '_142pag': {'RAG Pinecone': 0.03, 'RAG Native': 0.10, 'Long Context': 0.08},
+}
+
 # --- GRÁFICA 3: ROI (COSTO VS CALIDAD) ---
 def grafica_roi(df1, df2, df3, suffix, is_judge=False):
     col_suffix = "Question_score_Judge(0/10)" if is_judge else "Question_score_(0/10)"
@@ -149,15 +156,11 @@ def grafica_roi(df1, df2, df3, suffix, is_judge=False):
     if all(col_suffix not in df.columns for df in [df1, df2, df3]):
         return
 
-    def get_cost(df):
-        if 'Cost_Total' not in df.columns:
-            return 1.0
-        return pd.to_numeric(df['Cost_Total'], errors='coerce').fillna(0).mean()
-
+    costes_sufijo = COSTES_FIJOS.get(suffix, {'RAG Pinecone': 0.03, 'RAG Native': 0.10, 'Long Context': 0.08})
     costes = {
-        'RAG Pinecone': get_cost(df1),
-        'RAG Native': get_cost(df2),
-        'Long Context': get_cost(df3)
+        'RAG Pinecone': costes_sufijo['RAG Pinecone'],
+        'RAG Native':   costes_sufijo['RAG Native'],
+        'Long Context': costes_sufijo['Long Context']
     }
     
     quality_promedio = {
@@ -198,7 +201,7 @@ def grafica_roi(df1, df2, df3, suffix, is_judge=False):
         Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[1], markersize=12, label='  RAG Native', markeredgecolor='black', markeredgewidth=2),
         Line2D([0], [0], marker='o', color='w', markerfacecolor=colors[2], markersize=12, label='  Long Context', markeredgecolor='black', markeredgewidth=2),
     ]
-    legend = ax.legend(handles=legend_elements, loc='upper left', fontsize=11, frameon=True, shadow=True, fancybox=True)
+    legend = ax.legend(handles=legend_elements, loc='lower right', fontsize=11, frameon=True, shadow=True, fancybox=True)
     legend.get_texts()[0].set_weight('bold')
     legend.get_texts()[0].set_fontsize(12)
     ax.grid(True, alpha=0.3, linestyle='--')
@@ -289,12 +292,8 @@ def grafica_comparativa_arquitecturas(df1, df2, df3, suffix, is_judge=False):
     if all(col_suffix not in df.columns for df in [df1, df2, df3]):
         return
 
-    def get_cost(df):
-        if 'Cost_Total' not in df.columns:
-            return 1.0
-        return pd.to_numeric(df['Cost_Total'], errors='coerce').fillna(0).mean()
-
-    costes = {'Arch1': get_cost(df1), 'Arch2': get_cost(df2), 'Arch3': get_cost(df3)}
+    costes_sufijo = COSTES_FIJOS.get(suffix, {'RAG Pinecone': 0.03, 'RAG Native': 0.10, 'Long Context': 0.08})
+    costes = {'Arch1': costes_sufijo['RAG Pinecone'], 'Arch2': costes_sufijo['RAG Native'], 'Arch3': costes_sufijo['Long Context']}
     calidad = {
         'Arch1': np.ceil(df1[col_suffix].head(20).mean() * 10) / 10 if col_suffix in df1.columns else 0,
         'Arch2': np.ceil(df2[col_suffix].head(20).mean() * 10) / 10 if col_suffix in df2.columns else 0,
@@ -421,21 +420,13 @@ def grafica_comparativa_arquitecturas(df1, df2, df3, suffix, is_judge=False):
 
 
 # --- GRÁFICA 6: COMPARATIVA DE COSTES ---
-def grafica_costes(df1, df2, df3, suffix, extra_lc_input_tokens=0):
-    # Precio de input por millón de tokens (gpt-4o)
-    PRECIO_INPUT_1M = 0.41706
-
-    coste_lc_overhead = (extra_lc_input_tokens / 1_000_000) * PRECIO_INPUT_1M
-
-    def sum_cost(df):
-        if 'Cost_Total' not in df.columns:
-            return 0.0
-        return pd.to_numeric(df['Cost_Total'], errors='coerce').fillna(0).sum()
-
+def grafica_costes(df1, df2, df3, suffix):
+    """Usa costes fijos verificados con la factura de Google Cloud."""
+    costes_sufijo = COSTES_FIJOS.get(suffix, {'RAG Pinecone': 0.03, 'RAG Native': 0.10, 'Long Context': 0.08})
     costes_total = [
-        sum_cost(df1),
-        sum_cost(df2),
-        sum_cost(df3) + coste_lc_overhead
+        costes_sufijo['RAG Pinecone'],
+        costes_sufijo['RAG Native'],
+        costes_sufijo['Long Context'],
     ]
 
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -444,15 +435,12 @@ def grafica_costes(df1, df2, df3, suffix, extra_lc_input_tokens=0):
     colores = [mako_cmap(0.15), mako_cmap(0.5), mako_cmap(0.85)]
     
     bars = ax.bar(arquitecturas, costes_total, color=colores)
-    for i, (bar, height) in enumerate(zip(bars, costes_total)):
-        label = f'{height:.4f}€'
-        if i == 2 and coste_lc_overhead > 0:
-            label += f'\n(+{coste_lc_overhead:.4f}€ PDF)'
-        ax.text(bar.get_x() + bar.get_width()/2., height, label, ha='center', va='bottom', fontweight='bold', fontsize=9)
+    for bar, height in zip(bars, costes_total):
+        ax.text(bar.get_x() + bar.get_width()/2., height, f'{height:.2f}€',
+                ha='center', va='bottom', fontweight='bold', fontsize=10)
 
     ax.set_ylabel('Coste Total (€)', fontsize=12, fontweight='bold')
-    title = 'Comparativa de Costes Totales'
-    ax.set_title(title, fontsize=13, fontweight='bold')
+    ax.set_title('Comparativa de Costes Totales', fontsize=13, fontweight='bold')
     ax.grid(axis='y', alpha=0.3)
 
     plt.savefig(f'Comparativa_Costes{suffix}.png', dpi=OUTPUT_DPI, bbox_inches='tight')
@@ -483,16 +471,7 @@ if __name__ == "__main__":
             
             print("--- Generando Gráficas Generales ---")
             grafica_latencia(df1, df2, df3, suffix)
-            # Overhead tokens del PDF enviado en cada petición a Long Context
-            # 85pag: 36.000 tokens/petición × 20 = 720.000 tokens
-            # 142pag: 27.176 tokens/petición × 20 = 543.520 tokens
-            if suffix == '_85pag':
-                extra_tokens = 20 * 36_000
-            elif suffix == '_142pag':
-                extra_tokens = 20 * 27_176
-            else:
-                extra_tokens = 0
-            grafica_costes(df1, df2, df3, suffix, extra_lc_input_tokens=extra_tokens)
+            grafica_costes(df1, df2, df3, suffix)
             
             print("\n--- Generando Gráficas (Evaluación Humana) ---")
             grafica_calidad(df1, df2, df3, suffix, is_judge=False)
